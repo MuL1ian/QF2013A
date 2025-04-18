@@ -13,7 +13,7 @@ This project involves processing and analyzing trading data for model developmen
   1. Run the `data.ipynb` notebook.  
   2. This will convert the `Trading_Project_Data.csv` file into `Trading_Project_Data_Cleaned.csv`
   3. The `Trading_Project_Data_Cleaned.csv` will be use for further project deployment
-
+- we also provide the trading log information inside the data folder
 ---
 
 ### 📁 `script` Folder
