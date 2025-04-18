@@ -205,17 +205,17 @@ def stock_selection(train_df):
 
     metrics_df["composite_rank"] = (metrics_df["vol_rank"] + metrics_df["ret_rank"] + metrics_df["corr_rank"]) / 3
 
-    print("Ranking by Volatility (higher is better):")
+    # print("Ranking by Volatility (higher is better):")
     for _, row in metrics_df.sort_values("vol_rank").iterrows():
         pass
         # print(f"{row['ticker']}: Volatility = {row['volatility']:.5f}, Vol_Rank = {row['vol_rank']:.1f}")
 
-    print("\nRanking by Average Correlation (lower is better):")
+    # print("\nRanking by Average Correlation (lower is better):")
     for _, row in metrics_df.sort_values("corr_rank").iterrows():
         pass
         # print(f"{row['ticker']}: Avg Corr = {row['avg_corr']:.5f}, Corr_Rank = {row['corr_rank']:.1f}")
 
-    print("\nRanking by Average Return (higher is better):")
+    # print("\nRanking by Average Return (higher is better):")
     for _, row in metrics_df.sort_values("ret_rank").iterrows():
         pass
         # print(f"{row['ticker']}: Avg Return = {row['avg_return']:.5f}, Ret_Rank = {row['ret_rank']:.1f}")
@@ -227,6 +227,6 @@ def stock_selection(train_df):
         # print(f"{row['ticker']}: Composite Rank = {row['composite_rank']:.1f}")
 
     top10 = comp_sorted.head(10)["ticker"].tolist()
-    print("\nTop 10 Selected Tickers:")
+    # print("\nTop 10 Selected Tickers:")
     # print(top10)
     return top10
