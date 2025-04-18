@@ -4,6 +4,10 @@
 This project involves processing and analyzing trading data for model development and evaluation. It includes data preparation, feature calculation, and benchmarking strategies.
 
 ---
+## Performance
+  ![Comparsion](/QF2013A/doc/output.png "Comparsion")
+
+---
 
 ## Project Structure
 
