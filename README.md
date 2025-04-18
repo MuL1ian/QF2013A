@@ -21,6 +21,9 @@ This project involves processing and analyzing trading data for model developmen
   - Calculating returns.
   - Generating features for the model.
   - Stock Selection Algorithms.
+- `BaseStrategy.py` is a abstract class for setting up a protocol for all our trading strategy.
+- `technical_indicator.py` contain all sort of trading strategy using technical signal.
+- `Portfolio.py` contain how we automately allocate the mmoney into different strategy.
 
 ---
 ### 📄 `main.ipynb`
@@ -28,7 +31,10 @@ This project involves processing and analyzing trading data for model developmen
 
 ### 📄 `visualizes.ipynb`
 - **Purpose:** Visualise our trading strategies and compare them to the baseline.
-- **Usage:** Runs the same functions as main.ipynb, but presents only user‑friendly visualisations. All function implementations live in the `script` folder.
+- **Usage:** Runs the same functions as `main.ipynb`, but presents only user‑friendly visualisations. All function implementations live in the `script` folder.
+
+### 📄 `Further Improvements.ipynb`
+- **Purpose:** Contain our different trading strategy beyond technical signal. like different setting of LogisticRegression.
 
 ---
 
