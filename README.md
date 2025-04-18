@@ -22,15 +22,14 @@ This project involves processing and analyzing trading data for model developmen
 
 ---
 
-### 📄 `benchmark.ipynb`
-- **Purpose:** Defines the benchmark and baseline strategies.
+### 📄 `main.ipynb`
+- **Purpose:** Defines the Our and baseline strategies.
 - **Usage:** Provides a comparative analysis to evaluate the model's performance.
 
 ---
 
 ## How to Run the Project
-1. Navigate to the `data` folder and execute `data.ipynb` to prepare the datasets.
-2. Use the scripts in the `script` folder to calculate returns and features.
+1. Navigate to the `data` folder and execute `data.ipynb` to prepare the datasets and you will get the 'Trading_project_data_clear.csv'.
 3. Run `benchmark.ipynb` to compare model results with baseline strategies.
 
 ---
