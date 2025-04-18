@@ -23,16 +23,21 @@ This project involves processing and analyzing trading data for model developmen
   - Stock Selection Algorithms.
 
 ---
+### 📄 `main.ipynb`
+- Contains full function definitions and trace outputs for each trading algorithm.
 
 ### 📄 `visualizes.ipynb`
-- **Purpose:** visualizes our main trading strategies and graph comparsion with the baseline.
-- **Usage:** Provides a comparative analysis to evaluate the model's performance.
+- **Purpose:** Visualise our trading strategies and compare them to the baseline.
+- **Usage:** Runs the same functions as main.ipynb, but presents only user‑friendly visualisations. All function implementations live in the `script` folder.
 
 ---
 
 ## How to Run the Project
 1. Navigate to the `data` folder and execute `data.ipynb` to prepare the datasets and you will get the 'Trading_project_data_clear.csv'.
-3. Run `visualizes.ipynb` to compare model results with baseline strategies.
+
+2. For detailed of how each algorithms works, please run the `main.ipynb` This ipynb contain all the detailed function definition and print information for trace.
+
+3. OR run `visualizes.ipynb` for a streamlined, illustrative analysis. It imports the same functions as `main.ipynb` from `script` but focuses purely on plotting performance.
 
 ---
 

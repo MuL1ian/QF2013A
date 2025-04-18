@@ -14,102 +14,129 @@ def calculate_simple_returns(data: pd.DataFrame, stock_ticker: str = 'AAPL') -> 
     return (ST - S0) / S0
 
 
-def preprocess_project_data(
-        filepath: str,
-        sma_short_window: int = 12,
-        sma_long_window:  int = 25,
-        volatility_window: int = 5,
-        rsi_period: int = 12,
-        ema_span: int = 7,
-        boll_window: int = 7,
-        boll_std_factor: int = 2,
-        macd_short: int = 12,
-        macd_long: int = 26,
-        macd_signal: int = 9,
-        split_date: str = "2024-03-01"
-    ):
+def preprocess_project_data(filepath,
+                            sma_short_window=12,
+                            sma_long_window=25,
+                            volatility_window=5,
+                            rsi_period=12,
+                            ema_span=7,
+                            boll_window=20,
+                            boll_std_factor=2,
+                            macd_short=12,
+                            macd_long=26,
+                            macd_signal=9,
+                            split_date="2024-03-01"):
     """
-    Load cleaned CSV ➜ build per ticker technical indicators ➜
-    return (train_df, test_df) where test_df starts on `split_date`.
+    Loading the 'Trading_Project_Data_Cleaned.csv' which we cleaned in the data cleaning section. This function 
+    computes the dividend-adjusted log returns and several technical indicators for each stock,
+     and the data is split into training and testing sets.
 
-    For every ticker (detected via Close_<ticker>):
-        • keep raw High_, Low_, Close_  (and Volume_ / Dividends_ already in file)
-        • add Adj_Return_, SMA_short/long_, Volatility_, RSI_, EMA_,
-          BOLL_upper/lower_, MACD_line/signal_
+    For each ticker (extracted from columns starting with "Close_"):
+      - Dividend-adjusted log return is computed as:
+              Adj_Return = ln((Close + Dividend) / Close.shift(1))
+      - SMA_short and SMA_long (with periods 12 and 25, respectively) are computed.
+      - Rolling volatility is computed on the adjusted return using a 5-day window.
+      - RSI is computed over a 12-day period.
+      - EMA of the closing price is computed with a span of 7.
+      - Bollinger Bands (upper and lower) are computed using a 20-day window and a multiplier of 2.
+      - MACD indicators computed using standard parameters:
+            EMA12 (span=12), EMA26 (span=26), then MACD = EMA12 - EMA26, and
+            MACD_Signal = EMA(MACD, span=9).
+
+
+    Returns:
+        tuple: (train_df, test_df) with all the computed technical indicators and the original data.
     """
-    # 1) read & sort ------------------------------------------------
+    # Load and sort the base data.
     df = pd.read_csv(filepath)
     df["Price_Ticker"] = pd.to_datetime(df["Price_Ticker"])
-    df = df.sort_values("Price_Ticker").set_index("Price_Ticker")
-    print("Loaded", df.shape, "rows.")
+    df = df.sort_values("Price_Ticker")
+    df.set_index("Price_Ticker", inplace=True)
+    print("Data loaded and sorted by date.")
 
-    # 2) discover tickers ------------------------------------------
-    tickers = sorted(c.replace("Close_", "") for c in df.columns if c.startswith("Close_"))
-    print("Tickers:", tickers)
+    # Identify tickers from columns beginning with "Close_"
+    tickers = sorted(set(col.replace("Close_", "") for col in df.columns if col.startswith("Close_")))
+    # print("Tickers found:", tickers)
 
-    # helper for RSI
-    def _rsi(series, p=14):
+    ticker_dfs = []
+
+    def compute_RSI(series, period=7):
         delta = series.diff()
-        gain  = delta.clip(lower=0).rolling(p, 1).mean()
-        loss  = -delta.clip(upper=0).rolling(p, 1).mean()
-        rs    = gain / loss.replace(0, np.nan)
-        return 100 - 100 / (1 + rs)
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
+        avg_gain = gain.rolling(window=period, min_periods=1).mean()
+        avg_loss = loss.rolling(window=period, min_periods=1).mean()
+        rs = avg_gain / (avg_loss.replace(0, np.nan))
+        rsi = 100 - (100 / (1 + rs))
+        return rsi.fillna(100)
 
-    per_ticker_frames = []
+    for ticker in tickers:
+        close_col = f"Close_{ticker}"
+        if close_col not in df.columns:
+            print(f"{close_col} not found; skipping {ticker}.")
+            continue
 
-    # 3) loop over tickers -----------------------------------------
-    for tk in tickers:
-        close = df[f"Close_{tk}"]
-        div   = df.get(f"Dividends_{tk}", 0).fillna(0)
+        div_col = f"Dividends_{ticker}"
+        dividends = df[div_col] if div_col in df.columns else pd.Series(0, index=df.index)
+        dividends = dividends.fillna(0)
 
-        # a) adj‑log‑return
-        adj_ret = np.log((close + div) / close.shift(1))
-        df_adj  = adj_ret.rename(f"Adj_Return_{tk}")
+        # Compute dividend-adjusted log returns.
+        adj_return = np.log((df[close_col] + dividends) / df[close_col].shift(1))
+        df_adj = adj_return.to_frame(name=f"Adj_Return_{ticker}")
 
-        # b) SMA
-        sma_s  = close.rolling(sma_short_window, 1).mean().rename(f"SMA_short_{tk}")
-        sma_l  = close.rolling(sma_long_window, 1).mean().rename(f"SMA_long_{tk}")
+        # Compute SMA indices.
+        sma_short = df[close_col].rolling(window=sma_short_window, min_periods=1).mean()
+        sma_long = df[close_col].rolling(window=sma_long_window, min_periods=1).mean()
+        df_sma = pd.concat([sma_short.rename(f"SMA_short_{ticker}"),
+                            sma_long.rename(f"SMA_long_{ticker}")], axis=1)
 
-        # c) volatility of adj ret
-        vol5   = adj_ret.rolling(volatility_window, 1).std().rename(f"Volatility_{tk}")
+        # Compute rolling volatility on dividend-adjusted return.
+        volatility = df_adj[f"Adj_Return_{ticker}"].rolling(window=volatility_window, min_periods=1).std()
+        df_vol = volatility.to_frame(name=f"Volatility_{ticker}")
 
-        # d) RSI
-        rsi12  = _rsi(close, rsi_period).rename(f"RSI_{tk}")
+        # Compute RSI.
+        rsi = compute_RSI(df[close_col], period=rsi_period)
+        df_rsi = rsi.to_frame(name=f"RSI_{ticker}")
 
-        # e) EMA
-        ema7   = close.ewm(span=ema_span, adjust=False).mean().rename(f"EMA_{tk}")
+        # Compute EMA.
+        ema = df[close_col].ewm(span=ema_span, adjust=False).mean()
+        df_ema = ema.to_frame(name=f"EMA_{ticker}")
 
-        # f) Bollinger
-        mid    = close.rolling(boll_window, 1).mean()
-        std    = close.rolling(boll_window, 1).std()
-        boll_u = (mid + boll_std_factor*std).rename(f"BOLL_upper_{tk}")
-        boll_l = (mid - boll_std_factor*std).rename(f"BOLL_lower_{tk}")
+        # Compute Bollinger Bands.
+        boll_mid = df[close_col].rolling(window=boll_window, min_periods=1).mean()
+        boll_std = df[close_col].rolling(window=boll_window, min_periods=1).std()
+        boll_upper = boll_mid + boll_std_factor * boll_std
+        boll_lower = boll_mid - boll_std_factor * boll_std
+        df_boll = pd.concat([boll_upper.rename(f"BOLL_upper_{ticker}"),
+                             boll_lower.rename(f"BOLL_lower_{ticker}")], axis=1)
 
-        # g) MACD
-        exp1   = close.ewm(span=macd_short, adjust=False).mean()
-        exp2   = close.ewm(span=macd_long,  adjust=False).mean()
-        macd   = (exp1-exp2).rename(f"MACD_line_{tk}")
-        macd_s = macd.ewm(span=macd_signal, adjust=False).mean().rename(f"MACD_signal_{tk}")
+        # Compute MACD
+        exp1 = df[close_col].ewm(span=macd_short, adjust=False).mean()
+        exp2 = df[close_col].ewm(span=macd_long, adjust=False).mean()
+        macd_line = exp1 - exp2
+        signal = macd_line.ewm(span=macd_signal, adjust=False).mean()
+        df_macd = pd.concat([macd_line.rename(f"MACD_line_{ticker}"),
+                             signal.rename(f"MACD_signal_{ticker}")], axis=1)
 
-        # gather for this ticker  ----------------------------------
-        keep_cols = df[[f"High_{tk}", f"Low_{tk}", f"Close_{tk}", f"Volume_{tk}"]].copy() # high/low/close
-        tk_frame  = pd.concat(
-            [keep_cols, df_adj, sma_s, sma_l, vol5, rsi12,
-             ema7, boll_u, boll_l, macd, macd_s],
-            axis=1
-        )
-        per_ticker_frames.append(tk_frame)
-        print(f"  added indicators for {tk}")
+        # Concatenate indicators for this ticker.
+        ticker_df = pd.concat([df_adj, df_sma, df_vol, df_rsi, df_ema, df_boll, df_macd], axis=1)
+        ticker_dfs.append(ticker_df)
+        # print(f"Computed technical indicators for {ticker}.")
 
-    # 4) merge everything ------------------------------------------
-    full = pd.concat(per_ticker_frames, axis=1)
+    # Join all ticker indicator DataFrames.
+    technical_df = pd.concat(ticker_dfs, axis=1).copy()
+    # print("Technical indicators concatenated.")
 
-    # 5) train / test split ----------------------------------------
-    train_df = full.loc[full.index < split_date].copy()
-    test_df  = full.loc[full.index >= split_date].copy()
-    print(f"Train rows: {len(train_df)}, Test rows: {len(test_df)}")
+    # Join with the original data.
+    newframe = pd.concat([df, technical_df], axis=1).copy()
 
-    return train_df, test_df
+    # Split into training and testing sets.
+    train_df = newframe.loc[newframe.index < split_date].copy()
+    test_df  = newframe.loc[newframe.index >= split_date].copy()
+    full_df = newframe.copy()
+    print(f"Data split into {train_df.shape[0]} training rows and {test_df.shape[0]} testing rows.")
+
+    return full_df, train_df, test_df
 
 
 def stock_selection(train_df):
@@ -180,20 +207,26 @@ def stock_selection(train_df):
 
     print("Ranking by Volatility (higher is better):")
     for _, row in metrics_df.sort_values("vol_rank").iterrows():
-        print(f"{row['ticker']}: Volatility = {row['volatility']:.5f}, Vol_Rank = {row['vol_rank']:.1f}")
+        pass
+        # print(f"{row['ticker']}: Volatility = {row['volatility']:.5f}, Vol_Rank = {row['vol_rank']:.1f}")
 
     print("\nRanking by Average Correlation (lower is better):")
     for _, row in metrics_df.sort_values("corr_rank").iterrows():
-        print(f"{row['ticker']}: Avg Corr = {row['avg_corr']:.5f}, Corr_Rank = {row['corr_rank']:.1f}")
+        pass
+        # print(f"{row['ticker']}: Avg Corr = {row['avg_corr']:.5f}, Corr_Rank = {row['corr_rank']:.1f}")
 
     print("\nRanking by Average Return (higher is better):")
     for _, row in metrics_df.sort_values("ret_rank").iterrows():
-        print(f"{row['ticker']}: Avg Return = {row['avg_return']:.5f}, Ret_Rank = {row['ret_rank']:.1f}")
+        pass
+        # print(f"{row['ticker']}: Avg Return = {row['avg_return']:.5f}, Ret_Rank = {row['ret_rank']:.1f}")
 
     print("\nComposite Ranking (lower is better):")
     comp_sorted = metrics_df.sort_values("composite_rank")
     for _, row in comp_sorted.iterrows():
-        print(f"{row['ticker']}: Composite Rank = {row['composite_rank']:.1f}")
+        pass
+        # print(f"{row['ticker']}: Composite Rank = {row['composite_rank']:.1f}")
 
     top10 = comp_sorted.head(10)["ticker"].tolist()
+    print("\nTop 10 Selected Tickers:")
+    # print(top10)
     return top10
