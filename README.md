@@ -11,9 +11,7 @@ This project involves processing and analyzing trading data for model developmen
 - **Purpose:** Contains the original dataset and transformation processes for data cleaning.
 - **How to Use:**  
   1. Run the `data.ipynb` notebook.  
-  2. This will convert the `Trading_Project_Data.csv` file into two separate CSV files:  
-     - **Training Data:** Used for model training.  
-     - **Simulation Data:** Used for the actual simulation period.  
+  2. This will convert the `Trading_Project_Data.csv` file into `Trading_Project_Data_Cleaned.csv`
 
 ---
 
